@@ -1,13 +1,13 @@
 <launch>
   <!-- ObjRec Parameters (in millimeter) -->
-  <param name="pair_width" value="35.0"/>
+  <param name="pair_width" value="0.035"/>
   <!-- Pair width should be roughly half the extent of the visible object
        part. This means, for each object point p there should be (at least) one
        point q (from the same object) such that ||p - q|| <= 'pairwidth'.
        TRADEOFF: Smaller values allow for detection in occluded scenes but lead
        to more imprecise alignment.  Bigger values lead to better alignment but
        require large visible object parts. -->
-  <param name="voxel_size" value="3.5"/>
+  <param name="voxel_size" value="0.008"/>
   <!-- Voxel size is the size of the leafs of the octree, i.e., the "size" of
        the discretization. TRADEOFF: High values lead to less computation time
        but ignore object details, e.g., the method could not distinguish
@@ -17,7 +17,7 @@
        thus will make normal computation unreliable. Processing time, of
        course, will increase with smaller voxel size. -->
 
-  <param name="object_visibility" value="0.25"/>
+  <param name="object_visibility" value="0.1"/>
   <!-- Object visibility is the expected visible object part expressed as
        fraction of the hole object. For example 'objectVisibility = 0.1' means
        that 10% of the object surface is visible in the scene. Note that the
@@ -26,27 +26,29 @@
        detection in occluded scenes but also lead to more false positives since
        object hypotheses with small alignment with the scene will be accepted.
        -->
-  <param name="relative_object_size"                          value="0.05"/>
+  <param name="relative_object_size"                          value="0.01"/>
   <!-- Relative object size is the expected fraction of the scene points
        which belong to an object. For example a value of 0.05 means that each
        object represented in the scene will contain at least 5% of all scene
        points. TRADEOFF: lower values lead to more computation time and to
        higher success probability. -->
   <param name="relative_number_of_illegal_points"             value="0.03"/>
-  <param name="z_distance_threshold_as_voxel_size_fraction"   value="3.0"/>
-  <param name="normal_estimation_radius"                      value="3.0"/>
+  <param name="z_distance_threshold_as_voxel_size_fraction"   value="0.3"/>
+  <param name="normal_estimation_radius"                      value="0.03"/>
   <param name="intersection_fraction"                         value="0.09"/>
   <param name="num_threads"                                   value="3"/>
 
   <!-- Plane segmentation parameters -->
-  <param name="plane_thickness"                               value="15.0"/>
-  <param name="rel_num_of_plane_points"                       value="0.2"/>
+  <param name="plane_thickness"                               value="0.015"/>
+  <param name="rel_num_of_plane_points"                       value="0.4"/>
 
   <!-- Other Recognition Parameters -->
   <param name="success_probability"                           value="0.99"/>
-  <param name="use_only_points_above_plane"                   value="true"/>
+  <param name="use_only_points_above_plane"                   value="false"/>
   <param name="n_clouds_per_recognition" value="6"/>
-  <param name="downsample_voxel_size" value="5"/>
+  <param name="downsample_voxel_size" value="0.004"/>
+
+  <param name="use_cuda" value="true" />
 
   <!-- Clipping box -->
   <param name="x_clip_min" value="-2.5"/>

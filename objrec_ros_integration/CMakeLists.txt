@@ -6,12 +6,13 @@ project(objrec_ros_integration)
 # TODO: remove all from COMPONENTS that are not catkin packages.
 find_package(catkin REQUIRED COMPONENTS roscpp tf geometry_msgs
   visualization_msgs sensor_msgs pcl_ros pcl_conversions resource_retriever
-  dynamic_reconfigure nodelet objrec_msgs)
+  dynamic_reconfigure nodelet objrec_msgs objrec_core message_generation)
 
 # Build vtk-stl converter
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
 
+set(OBJREC_USE_CUDA true)
 IF(OBJREC_USE_CUDA)
   set(CUDA_TOOLKIT_ROOT_DIR $ENV{CUDA_TOOLKIT_ROOT_DIR})
   FIND_PACKAGE(CUDA QUIET REQUIRED)
@@ -23,7 +24,7 @@ add_definitions(-DOBJREC_USE_PCL_PLANE_EXTRACTION=${OBJREC_USE_PCL_PLANE_EXTRACT
 # TODO: fill in what other packages will need to use this package
 catkin_package(
     DEPENDS roscpp tf geometry_msgs visualization_msgs sensor_msgs pcl_ros resource_retriever dynamic_reconfigure nodelet objrec_msgs objrec_core
-    CATKIN_DEPENDS # TODO
+    CATKIN_DEPENDS message_runtime
     INCLUDE_DIRS include
     LIBRARIES # TODO
 )
@@ -46,11 +47,13 @@ else()
   add_executable(objrec_node src/objrec_node.cpp)
 endif()
 
-find_library(ObjRecRANSAC_LIBRARY ObjRecRANSAC)
+#find_library(ObjRecRANSAC_LIBRARY ObjRecRANSAC)
 
-target_link_libraries(objrecransac_interface ${ObjRecRANSAC_LIBRARY} ${VTK_LIBS} vtkHybrid ${catkin_LIBRARIES})
-target_link_libraries(objrecransac_nodelet objrecransac_interface)
-target_link_libraries(objrec_node objrecransac_interface) 
+MESSAGE( STATUS "catkin_LIBRARIES " ${catkin_LIBRARIES} )
+
+target_link_libraries(objrecransac_interface ${VTK_LIBS} vtkHybrid ${catkin_LIBRARIES})
+target_link_libraries(objrecransac_nodelet objrecransac_interface ${catkin_LIBRARIES})
+target_link_libraries(objrec_node objrecransac_interface ${catkin_LIBRARIES}) 
 
 install(DIRECTORY data
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

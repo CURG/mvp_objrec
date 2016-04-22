@@ -61,8 +61,8 @@ namespace objrec_ros_integration {
 
     void reconfigure_cb(objrec_msgs::ObjRecConfig &config, uint32_t level);
 
-    void cloud_cb(const sensor_msgs::PointCloud2ConstPtr &points_msg);
-    void pcl_cloud_cb(const boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > &points_msg);
+    //void cloud_cb(const sensor_msgs::PointCloud2ConstPtr &points_msg);
+    void pcl_cloud_cb(const sensor_msgs::PointCloud2ConstPtr &points_msg);
     void recognize_objects_thread();
     void publish_markers(const objrec_msgs::RecognizedObjects &msg);
 
@@ -120,7 +120,7 @@ namespace objrec_ros_integration {
     double intersection_fraction_;
     bool use_cuda_;
     std::vector<int> cuda_device_map_;
-    
+
     // Enable iterative closest point post-processing
     bool icp_post_processing_;
     // This should equal the number of CPU cores
