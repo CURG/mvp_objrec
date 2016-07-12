@@ -20,11 +20,18 @@ ENDIF(OBJREC_USE_CUDA)
 
 add_definitions(-DOBJREC_USE_PCL_PLANE_EXTRACTION=${OBJREC_USE_PCL_PLANE_EXTRACTION})
 
+add_service_files(
+    FILES
+    FindObjects.srv
+    )
+
+generate_messages( DEPENDENCIES std_msgs geometry_msgs sensor_msgs )
+
 # catkin_package parameters: http://ros.org/doc/groovy/api/catkin/html/dev_guide/generated_cmake_api.html#catkin-package
 # TODO: fill in what other packages will need to use this package
 catkin_package(
     DEPENDS roscpp tf geometry_msgs visualization_msgs sensor_msgs pcl_ros resource_retriever dynamic_reconfigure nodelet objrec_msgs objrec_core
-    CATKIN_DEPENDS message_runtime
+    CATKIN_DEPENDS message_runtime message_generation
     INCLUDE_DIRS include
     LIBRARIES # TODO
 )
@@ -46,6 +53,7 @@ else()
   add_library(objrecransac_nodelet src/objrec_nodelet.cpp)
   add_executable(objrec_node src/objrec_node.cpp)
 endif()
+
 
 #find_library(ObjRecRANSAC_LIBRARY ObjRecRANSAC)
 

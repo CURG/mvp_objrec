@@ -30,6 +30,7 @@
 #include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
 #include <tf/transform_listener.h>
+#include <objrec_ros_integration/FindObjects.h>
 
 namespace objrec_ros_integration {
   class ObjRecInterface {
@@ -53,6 +54,9 @@ namespace objrec_ros_integration {
 
     void start();
 
+    bool recognizeObjects(objrec_ros_integration::FindObjects::Request &req, objrec_ros_integration::FindObjects::Response &res);
+
+
   private:
     void load_models_from_rosparam();
     void add_model(
@@ -60,6 +64,7 @@ namespace objrec_ros_integration {
         const std::string &model_uri);
 
     void reconfigure_cb(objrec_msgs::ObjRecConfig &config, uint32_t level);
+
 
     //void cloud_cb(const sensor_msgs::PointCloud2ConstPtr &points_msg);
     void pcl_cloud_cb(const sensor_msgs::PointCloud2ConstPtr &points_msg);
@@ -75,9 +80,12 @@ namespace objrec_ros_integration {
     ros::Publisher foreground_points_pub_;
     tf::TransformListener listener_;
 
+
+
     // ROS Dynamic Reconfigure
     dynamic_reconfigure::Server<objrec_msgs::ObjRecConfig> reconfigure_server_;
 
+    ros::ServiceServer find_objects_server_;
     // ROS Interface parameters
     bool publish_markers_enabled_;
     int n_clouds_per_recognition_;

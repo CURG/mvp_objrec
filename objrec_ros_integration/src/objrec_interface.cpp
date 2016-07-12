@@ -50,6 +50,7 @@
 #include <objrec_msgs/ObjRecConfig.h>
 
 #include <objrec_ros_integration/objrec_interface.h>
+//#include <objrec_ros_integration/FindObjects.h>
 
 // Helper function for raising an exception if a required parameter is not found
     template <class T>
@@ -156,6 +157,10 @@ ObjRecInterface::ObjRecInterface(ros::NodeHandle nh) :
     // Set up dynamic reconfigure
     reconfigure_server_.setCallback(boost::bind(&ObjRecInterface::reconfigure_cb, this, _1, _2));
 
+    // add FindObject service
+    const std::string x = "find_objects";
+    find_objects_server_ = nh.advertiseService(x, &ObjRecInterface::recognizeObjects, this);
+    ROS_INFO("ready to find objects");
     ROS_INFO_STREAM("Constructed ObjRec interface.");
 }
 
@@ -174,7 +179,7 @@ void ObjRecInterface::start()
     }
     time_to_stop_ = false;
     // Start recognition thread
-    recognition_thread_.reset(new boost::thread(boost::bind(&ObjRecInterface::recognize_objects_thread, this)));
+    //recognition_thread_.reset(new boost::thread(boost::bind(&ObjRecInterface::recognize_objects_thread, this)));
 }
 
 void ObjRecInterface::load_models_from_rosparam()
@@ -365,6 +370,7 @@ void ObjRecInterface::pcl_cloud_cb(const sensor_msgs::PointCloud2ConstPtr &point
                 cloud->points[j].z > z_clip_min_ && cloud->points[j].z < z_clip_max_)
         {
             // Add point
+
             cloud_clipped->push_back(cloud->points[j]);
         }
     }
@@ -507,10 +513,8 @@ bool ObjRecInterface::recognize_objects(
     return true;
 }
 
-void ObjRecInterface::recognize_objects_thread()
+bool ObjRecInterface::recognizeObjects(objrec_ros_integration::FindObjects::Request &req, objrec_ros_integration::FindObjects::Response &res)
 {
-    ros::Rate max_rate(100.0);
-
     // Working structures
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_full(new pcl::PointCloud<pcl::PointXYZRGB>());
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
@@ -526,103 +530,138 @@ void ObjRecInterface::recognize_objects_thread()
 
     std::list<boost::shared_ptr<PointSetShape> > detected_models;
 
-    while(ros::ok() && !time_to_stop_)
+    ROS_DEBUG_STREAM("ObjRec: Aggregating point clouds... ");
     {
-        // Don't hog the cpu
-        max_rate.sleep();
+        // Scope for syncrhonization
 
-        cloud_full->clear();
-        cloud->clear();
-
-        ROS_DEBUG_STREAM("ObjRec: Aggregating point clouds... ");
-        {
-            // Scope for syncrhonization
-
-            // Continue if the cloud is empty
-            static ros::Rate warn_rate(1.0);
-            if(clouds_.empty()) {
-                ROS_WARN("Pointcloud buffer is empty!");
-                warn_rate.sleep();
-                continue;
-            }
-
-            // Lock the buffer mutex
-            boost::mutex::scoped_lock buffer_lock(buffer_mutex_);
-
-            ROS_DEBUG_STREAM("ObjRec: Computing objects from "
-                    <<clouds_.size()<<" point clounds "
-                    <<"between "<<(ros::Time::now() - pcl_conversions::fromPCL(clouds_.back()->header).stamp)
-                    <<" to "<<(ros::Time::now() - pcl_conversions::fromPCL(clouds_.front()->header).stamp)<<" seconds after they were acquired.");
-
-            // Copy references to the stored clouds
-            cloud_full->header = clouds_.front()->header;
-
-            for(std::list<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > >::const_iterator it = clouds_.begin();
-                    it != clouds_.end();
-                    ++it)
-            {
-                *cloud_full += *(*it);
-            }
+        // Continue if the cloud is empty
+        static ros::Rate warn_rate(1.0);
+        if(clouds_.empty()) {
+            ROS_WARN("Pointcloud buffer is empty!");
+            warn_rate.sleep();
+            return false;
         }
 
-        // Recongize objects
-        bool objects_recognized = this->recognize_objects(
-                cloud_full,
-                cloud,
-                voxel_grid,
-                coefficients, inliers, outliers,
-                foreground_points,
-                detected_models,
-                true,
-                true);
+        // Lock the buffer mutex
+        boost::mutex::scoped_lock buffer_lock(buffer_mutex_);
 
-        // No objects recognized
-        if(!objects_recognized) {
-            continue;
-        }
+        ROS_DEBUG_STREAM("ObjRec: Computing objects from "
+                <<clouds_.size()<<" point clounds "
+                <<"between "<<(ros::Time::now() - pcl_conversions::fromPCL(clouds_.back()->header).stamp)
+                <<" to "<<(ros::Time::now() - pcl_conversions::fromPCL(clouds_.front()->header).stamp)<<" seconds after they were acquired.");
 
-        // Construct recognized objects message
-        objrec_msgs::RecognizedObjects objects_msg;
-        objects_msg.header.stamp = pcl_conversions::fromPCL(cloud->header).stamp;
-        objects_msg.header.frame_id = "/head_mount_kinect_rgb_optical_frame";//cloud->header;
+        // Copy references to the stored clouds
+        cloud_full->header = clouds_.front()->header;
 
-        for(std::list<boost::shared_ptr<PointSetShape> >::iterator it = detected_models.begin();
-                it != detected_models.end();
+        for(std::list<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > >::const_iterator it = clouds_.begin();
+                it != clouds_.end();
                 ++it)
         {
-            boost::shared_ptr<PointSetShape> detected_model = *it;
+            *cloud_full += *(*it);
+        }
+    }
 
-            // Construct and populate a message
-            objrec_msgs::PointSetShape pss_msg;
-            pss_msg.label = detected_model->getUserData()->getLabel();
-            pss_msg.confidence = detected_model->getConfidence();
-            array_to_pose(detected_model->getRigidTransform(), pss_msg.pose);
+    // Recongize objects
+    bool objects_recognized = this->recognize_objects(
+            cloud_full,
+            cloud,
+            voxel_grid,
+            coefficients, inliers, outliers,
+            foreground_points,
+            detected_models,
+            true,
+            true);
 
-            // Transform into the world frame TODO: make this frame a parameter
-            geometry_msgs::PoseStamped pose_stamped_in, pose_stamped_out;
-            pose_stamped_in.header = pcl_conversions::fromPCL(cloud->header);
-            pose_stamped_in.pose = pss_msg.pose;
+    // No objects recognized
+    if(!objects_recognized) {
+        return false;
+    }
 
-            try {
-                listener_.transformPose("/base_footprint",pose_stamped_in,pose_stamped_out);
-                pss_msg.pose = pose_stamped_out.pose;
-            }
-            catch (tf::TransformException ex){
-                ROS_WARN("Not transforming recognized objects into world frame: %s",ex.what());
-            }
+    // Construct recognized objects message
+    objrec_msgs::RecognizedObjects objects_msg;
+    objects_msg.header.stamp = pcl_conversions::fromPCL(cloud->header).stamp;
+    objects_msg.header.frame_id = "/head_mount_kinect_rgb_optical_frame";//cloud->header;
 
-            objects_msg.objects.push_back(pss_msg);
+    for(std::list<boost::shared_ptr<PointSetShape> >::iterator it = detected_models.begin();
+            it != detected_models.end();
+            ++it)
+    {
+        boost::shared_ptr<PointSetShape> detected_model = *it;
+
+        // Construct and populate a message
+        objrec_msgs::PointSetShape pss_msg;
+        pss_msg.label = detected_model->getUserData()->getLabel();
+        pss_msg.confidence = detected_model->getConfidence();
+        array_to_pose(detected_model->getRigidTransform(), pss_msg.pose);
+
+        // Transform into the world frame TODO: make this frame a parameter
+        geometry_msgs::PoseStamped pose_stamped_in, pose_stamped_out;
+        pose_stamped_in.header = pcl_conversions::fromPCL(cloud->header);
+        pose_stamped_in.pose = pss_msg.pose;
+
+        try {
+            listener_.transformPose("/head_mount_kinect_rgb_optical_frame",pose_stamped_in,pose_stamped_out);
+            pss_msg.pose = pose_stamped_out.pose;
+        }
+        catch (tf::TransformException ex){
+            ROS_WARN("Not transforming recognized objects into world frame: %s",ex.what());
         }
 
-        // Publish the visualization markers
-        this->publish_markers(objects_msg);
-
-        // Publish the recognized objects
-        objects_pub_.publish(objects_msg);
-
-        // Publish the points used in the scan, for debugging
-        foreground_points_pub_.publish(cloud);
+        objects_msg.objects.push_back(pss_msg);
     }
+
+    // Publish the visualization markers
+    this->publish_markers(objects_msg);
+
+    // Publish the recognized objects
+    objects_pub_.publish(objects_msg);
+
+    // Publish the points used in the scan, for debugging
+    foreground_points_pub_.publish(cloud);
+
+    for(std::vector<objrec_msgs::PointSetShape>::const_iterator it = objects_msg.objects.begin();
+            it != objects_msg.objects.end();
+            ++it)
+    {
+        objrec_msgs::PointSetShape object = *it;
+        res.object_name.push_back(object.label);
+        res.object_pose.push_back(object.pose);
+
+    }
+    /*
+    for (std::list<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > >::iterator it =  clouds_.begin();
+            it != clouds_.end();
+            ++it)
+    {
+        sensor_msgs::PointCloud2 ros_cloud;
+        pcl::PointCloud<pcl::PointXYZRGB > > cloud = *it;
+        pcl::toROSMsg(cloud, ros_cloud);
+
+        res.pointcloud.push_back(ros_cloud);
+    }*/
+
+    sensor_msgs::PointCloud2 ros_cloud;
+    pcl::toROSMsg(*cloud, ros_cloud);
+    res.pointcloud.push_back(ros_cloud);
+    res.reason = "TODO: what is reason?";
+
+    ROS_INFO("sending back response ");
+    return true;
+}
+
+void ObjRecInterface::recognize_objects_thread()
+{
+   /*
+    * ros::Rate max_rate(100.0);
+
+    while(ros::ok() && !time_to_stop_)
+    {
+
+        // Don't hog the cpu
+        max_rate.sleep();
+        recognizeObjects();
+    }
+    */
 }
 
 void ObjRecInterface::publish_markers(const objrec_msgs::RecognizedObjects &objects_msg)
