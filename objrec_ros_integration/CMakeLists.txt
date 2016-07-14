@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(objrec_ros_integration)
 # Load catkin and all dependencies required for this package
 # TODO: remove all from COMPONENTS that are not catkin packages.
-find_package(catkin REQUIRED COMPONENTS roscpp tf geometry_msgs
+find_package(catkin REQUIRED COMPONENTS roscpp tf geometry_msgs kdl_conversions
   visualization_msgs sensor_msgs pcl_ros pcl_conversions resource_retriever
   dynamic_reconfigure nodelet objrec_msgs objrec_core message_generation)
 

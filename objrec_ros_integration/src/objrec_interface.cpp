@@ -27,11 +27,13 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/extract_indices.h>
 
-
 #include <resource_retriever/retriever.h>
 
 #include <ros/ros.h>
 #include <ros/exceptions.h>
+
+#include <tf_conversions/tf_kdl.h>
+#include <tf_conversions/tf_eigen.h>
 
 #include <tf/tf.h>
 #include <geometry_msgs/Pose.h>
@@ -580,7 +582,7 @@ bool ObjRecInterface::recognizeObjects(objrec_ros_integration::FindObjects::Requ
     // Construct recognized objects message
     objrec_msgs::RecognizedObjects objects_msg;
     objects_msg.header.stamp = pcl_conversions::fromPCL(cloud->header).stamp;
-    objects_msg.header.frame_id = "/head_mount_kinect_rgb_optical_frame";//cloud->header;
+    objects_msg.header.frame_id = cloud->header.frame_id;
 
     for(std::list<boost::shared_ptr<PointSetShape> >::iterator it = detected_models.begin();
             it != detected_models.end();
@@ -599,13 +601,20 @@ bool ObjRecInterface::recognizeObjects(objrec_ros_integration::FindObjects::Requ
         pose_stamped_in.header = pcl_conversions::fromPCL(cloud->header);
         pose_stamped_in.pose = pss_msg.pose;
 
-        try {
-            listener_.transformPose("/head_mount_kinect_rgb_optical_frame",pose_stamped_in,pose_stamped_out);
-            pss_msg.pose = pose_stamped_out.pose;
-        }
-        catch (tf::TransformException ex){
-            ROS_WARN("Not transforming recognized objects into world frame: %s",ex.what());
-        }
+//        try {
+//            listener_.transformPose(cloud->header.frame_id,pose_stamped_in,pose_stamped_out);
+//            pss_msg.pose = pose_stamped_out.pose;
+//        }
+//        catch (tf::TransformException ex){
+//            ROS_WARN("Not transforming recognized objects into world frame: %s",ex.what());
+//        }
+
+        KDL::Frame pose;
+        tf::poseMsgToKDL(pss_msg.pose, pose);
+        KDL::Frame rot = KDL::Frame(KDL::Rotation::RotX(-(KDL::PI)/2.0), KDL::Vector(0,0,0));
+        KDL::Frame newPose = pose * rot;
+        tf::poseKDLToMsg(newPose, pss_msg.pose);
+
 
         objects_msg.objects.push_back(pss_msg);
     }
