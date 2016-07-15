@@ -1,15 +1,15 @@
 <launch>
   <rosparam ns="models">
-    ['Amicelli','Rusk_Box','Soda_Club_Bottle']
+    ['gillette_shaving_gel', 'garnier_shampoo_bottle']
   </rosparam>
   <group ns="model_uris">
-    <param name="Amicelli" value="package://objrec_ros_integration/data/Soda_Club_Bottle.vtk"/>
-    <param name="Rusk_Box" value="package://objrec_ros_integration/data/Rusk_Box.vtk"/>
-    <param name="Soda_Club_Bottle" value="package://objrec_ros_integration/data/Soda_Club_Bottle.vtk"/>
+    <param name="garnier_shampoo_bottle" value="package://object_models/models/cgdb/robert_data_unique/garnier_shampoo_bottle.vtk" />
+    <param name="gillette_shaving_gel" value="package://object_models/models/cgdb/robert_data_unique/gillette_shaving_gel.vtk" />
+    <!-- <param name="all" value="package://object_models/models/cgdb/robert_data_unique/all.vtk" /> -->
   </group>
   <group ns="stl_uris">
-    <param name="Amicelli" value="package://objrec_ros_integration/data/Soda_Club_Bottle.stl"/>
-    <param name="Rusk_Box" value="package://objrec_ros_integration/data/Rusk_Box.stl"/>
-    <param name="Soda_Club_Bottle" value="package://objrec_ros_integration/data/Soda_Club_Bottle.stl"/>
+    <param name="garnier_shampoo_bottle" value="package://object_models/models/cgdb/robert_data_unique/garnier_shampoo_bottle.vtk.stl" />
+    <param name="gillette_shaving_gel" value="package://object_models/models/cgdb/robert_data_unique/gillette_shaving_gel.vtk.stl" />
+    <!-- <param name="all" value="package://object_models/models/cgdb/robert_data_unique/all.vtk.stl" /> -->
   </group>
 </launch>
