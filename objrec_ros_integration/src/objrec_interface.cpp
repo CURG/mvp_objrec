@@ -377,7 +377,7 @@ void ObjRecInterface::pcl_cloud_cb(const sensor_msgs::PointCloud2ConstPtr &point
         }
     }
 
-    ROS_INFO_STREAM( cloud_clipped << " the size of cloud_clipped");
+    //ROS_INFO_STREAM( cloud_clipped << " the size of cloud_clipped");
     // Store the cloud
     clouds_.push_back(cloud_clipped);
 

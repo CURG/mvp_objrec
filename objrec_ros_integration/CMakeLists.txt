@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp tf geometry_msgs kdl_conversions
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
 
-set(OBJREC_USE_CUDA true)
+set(OBJREC_USE_CUDA false)
 IF(OBJREC_USE_CUDA)
   set(CUDA_TOOLKIT_ROOT_DIR $ENV{CUDA_TOOLKIT_ROOT_DIR})
   FIND_PACKAGE(CUDA QUIET REQUIRED)
