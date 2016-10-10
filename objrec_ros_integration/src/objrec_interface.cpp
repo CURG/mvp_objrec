@@ -93,21 +93,12 @@ ObjRecInterface::ObjRecInterface(ros::NodeHandle nh) :
     //TODO: remove this / unnecessary
     //scene_points_(vtkPoints::New(VTK_DOUBLE)),
     time_to_stop_(false),
-    use_cuda_(false),
-    clip_cloud_(true)
+    use_cuda_(false)
 {
     // Interface configuration
     nh.getParam("publish_markers", publish_markers_enabled_);
     nh.getParam("n_clouds_per_recognition", n_clouds_per_recognition_);
     nh.getParam("downsample_voxel_size", downsample_voxel_size_);
-
-    nh.getParam("clip_cloud", clip_cloud_);
-    nh.getParam("x_clip_min", x_clip_min_);
-    nh.getParam("x_clip_max", x_clip_max_);
-    nh.getParam("y_clip_min", y_clip_min_);
-    nh.getParam("y_clip_max", y_clip_max_);
-    nh.getParam("z_clip_min", z_clip_min_);
-    nh.getParam("z_clip_max", z_clip_max_);
 
     // Get construction parameters from ROS & construct object recognizer
     require_param(nh,"pair_width",pair_width_);
@@ -150,8 +141,8 @@ ObjRecInterface::ObjRecInterface(ros::NodeHandle nh) :
     require_param(nh,"plane_thickness",plane_thickness_);
 
     // Construct subscribers and publishers
-    //  cloud_sub_ = nh.subscribe("points", 1, &ObjRecInterface::cloud_cb, this);
-    pcl_cloud_sub_ = nh.subscribe("points", 1, &ObjRecInterface::pcl_cloud_cb, this);
+    //pcl_cloud_sub_ = nh.subscribe("points", 1, &ObjRecInterface::pcl_cloud_cb, this);
+    pcl_cloud_sub_ = nh.subscribe("/filtered_pc", 1, &ObjRecInterface::pcl_cloud_cb, this);
     objects_pub_ = nh.advertise<objrec_msgs::RecognizedObjects>("recognized_objects",20);
     markers_pub_ = nh.advertise<visualization_msgs::MarkerArray>("recognized_objects_markers",20);
     foreground_points_pub_ = nh.advertise<pcl::PointCloud<pcl::PointXYZ> >("foreground_points",10);
@@ -331,55 +322,22 @@ void ObjRecInterface::reconfigure_cb(objrec_msgs::ObjRecConfig &config, uint32_t
     downsample_voxel_size_ = config.downsample_voxel_size;
     confidence_time_multiplier_ = config.confidence_time_multiplier;
 
-    clip_cloud_ = config.clip_cloud;
-    x_clip_min_ = config.x_clip_min;
-    x_clip_max_ = config.x_clip_max;
-    y_clip_min_ = config.y_clip_min;
-    y_clip_max_ = config.y_clip_max;
-    z_clip_min_ = config.z_clip_min;
-    z_clip_max_ = config.z_clip_max;
 }
-/*
-   void ObjRecInterface::cloud_cb(const sensor_msgs::PointCloud2ConstPtr &points_msg)
-   {
-// Convert to PCL cloud
-boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-pcl::fromROSMsg(*points_msg, *cloud);
-
-this->pcl_cloud_cb(cloud);
-}
-*/
 
 //void ObjRecInterface::pcl_cloud_cb(const boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > &cloud)
 void ObjRecInterface::pcl_cloud_cb(const sensor_msgs::PointCloud2ConstPtr &points_msg)
 {
+    // Lock the buffer mutex while we're capturing a new point cloud
+    boost::mutex::scoped_lock buffer_lock(buffer_mutex_);
+
     // Convert to PCL cloud
     boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::fromROSMsg(*points_msg, *cloud);
 
-    //  this->pcl_cloud_cb(cloud);
+    ROS_INFO_STREAM( cloud << " the size of cloud");
 
-    // Lock the buffer mutex while we're capturing a new point cloud
-    boost::mutex::scoped_lock buffer_lock(buffer_mutex_);
-
-    //ROS_INFO_STREAM("Received pointcloud! "<<clouds_.size()<<" clouds");
-
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_clipped(new pcl::PointCloud<pcl::PointXYZRGB>());
-    cloud_clipped->header = cloud->header;
-    for (int j = 0; j < (int) cloud->points.size(); ++j) {
-        if (cloud->points[j].x > x_clip_min_ && cloud->points[j].x < x_clip_max_ &&
-                cloud->points[j].y > y_clip_min_ && cloud->points[j].y < y_clip_max_ &&
-                cloud->points[j].z > z_clip_min_ && cloud->points[j].z < z_clip_max_)
-        {
-            // Add point
-
-            cloud_clipped->push_back(cloud->points[j]);
-        }
-    }
-
-    //ROS_INFO_STREAM( cloud_clipped << " the size of cloud_clipped");
     // Store the cloud
-    clouds_.push_back(cloud_clipped);
+    clouds_.push_back(cloud);
 
     // Increment the cloud index
     while(clouds_.size() > (unsigned)n_clouds_per_recognition_) {
@@ -413,7 +371,7 @@ bool ObjRecInterface::recognize_objects(
     }
 
     // Remove plane points
-    if(use_only_points_above_plane_)
+    /*if(use_only_points_above_plane_)
     {
         ROS_DEBUG("ObjRec: Removing points not above plane with PCL...");
         // Create the segmentation object
@@ -477,7 +435,7 @@ bool ObjRecInterface::recognize_objects(
                         it->z);
             }
         }
-    } else {
+    } else {*/
         // Fill the foreground cloud
         foreground_points->SetNumberOfPoints(cloud->points.size());
         foreground_points->Reset();
@@ -492,7 +450,7 @@ bool ObjRecInterface::recognize_objects(
                     it->y,
                     it->z);
         }
-    }
+   //}
 
     // Detect models
     {

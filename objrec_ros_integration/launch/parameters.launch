@@ -51,10 +51,10 @@
   <param name="use_cuda" value="true" />
 
   <!-- Clipping box -->
-  <param name="x_clip_min" value="-0.3"/>
-  <param name="x_clip_max" value="0.3"/>
-  <param name="y_clip_min" value="-2.0"/>
-  <param name="y_clip_max" value="2.5"/>
+  <param name="x_clip_min" value="-0.2"/>
+  <param name="x_clip_max" value="0.23"/>
+  <param name="y_clip_min" value="-0.65"/>
+  <param name="y_clip_max" value="0.1"/>
   <param name="z_clip_min" value="0.0"/>
-  <param name="z_clip_max" value="0.8"/>
+  <param name="z_clip_max" value="0.4"/>
 </launch>

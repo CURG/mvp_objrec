@@ -92,14 +92,6 @@ namespace objrec_ros_integration {
     double downsample_voxel_size_;
     double confidence_time_multiplier_;
 
-    bool clip_cloud_;
-    double x_clip_min_;
-    double x_clip_max_;
-    double y_clip_min_;
-    double y_clip_max_;
-    double z_clip_min_;
-    double z_clip_max_;
-
     // ObjRec structure
     boost::scoped_ptr<ObjRecRANSAC> objrec_;
 
