@@ -334,8 +334,6 @@ void ObjRecInterface::pcl_cloud_cb(const sensor_msgs::PointCloud2ConstPtr &point
     boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB> > cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::fromROSMsg(*points_msg, *cloud);
 
-    ROS_INFO_STREAM( cloud << " the size of cloud");
-
     // Store the cloud
     clouds_.push_back(cloud);
 
